@@ -30,6 +30,7 @@ import com.kazuki.replaceobject.R;
 import com.kazuki.replaceobject.helpers.CameraPermissionHelper;
 import com.kazuki.replaceobject.helpers.DisplayRotationHelper;
 import com.kazuki.replaceobject.helpers.FullScreenHelper;
+import com.kazuki.replaceobject.helpers.GestureHelper;
 import com.kazuki.replaceobject.helpers.SnackbarHelper;
 import com.kazuki.replaceobject.helpers.TapHelper;
 import com.kazuki.replaceobject.helpers.TrackingStateHelper;
@@ -53,7 +54,7 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
     private final SnackbarHelper messageSnackbarHelper=new SnackbarHelper();
     private DisplayRotationHelper displayRotationHelper;
     private final TrackingStateHelper trackingStateHelper = new TrackingStateHelper(this);
-    private TapHelper tapHelper;
+    private GestureHelper gestureHelper;
 
     private final BackgroundRenderer backgroundRenderer=new BackgroundRenderer();
     private final ObjectRenderer virtualObject=new ObjectRenderer();
@@ -63,18 +64,10 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
 
     private static final String SEARCHING_PLANE_MESSAGE = "Searching for surfaces...";
 
-    private static class ColoredAnchor {
-        public final Anchor anchor;
-        public final float[] color;
 
-        public ColoredAnchor(Anchor a, float[] color4f) {
-            this.anchor = a;
-            this.color = color4f;
-        }
-    }
+    private final ArrayList<Anchor> anchors=new ArrayList<>();
 
-    private final ArrayList<ColoredAnchor> anchors=new ArrayList<>();
-
+    private boolean hasThreadCreated=false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,8 +76,8 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
         displayRotationHelper=new DisplayRotationHelper(this);
 
         // Set up tap listener
-        tapHelper=new TapHelper(this);
-        surfaceView.setOnTouchListener(tapHelper);
+        gestureHelper=new GestureHelper(this);
+        surfaceView.setOnTouchListener(gestureHelper);
 
         // set up renderer
         surfaceView.setPreserveEGLContextOnPause(true);
@@ -202,8 +195,8 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
             // Create the texture and pass it to ARCore session to be filled during update().
             backgroundRenderer.createOnGlThread(/*context=*/ this);
 
-            virtualObject.createOnGlThread(/*context=*/ this, "models/andy.obj", "models/andy.png");
-            virtualObject.setMaterialProperties(0.0f, 2.0f, 0.5f, 6.0f);
+            //virtualObject.createOnGlThread(/*context=*/ this, "models/andy.obj", "models/andy.png");
+            //virtualObject.setMaterialProperties(0.0f, 2.0f, 0.5f, 6.0f);
 
         } catch (IOException e) {
             Log.e(TAG, "Failed to read an asset file", e);
@@ -236,6 +229,12 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
             // camera framerate.
             Frame frame = session.update();
             Camera camera = frame.getCamera();
+
+            if(!hasThreadCreated){
+                virtualObject.createOnGlThread(/*context=*/ this, "models/andy.obj", "models/andy.png");
+                virtualObject.setMaterialProperties(0.0f, 2.0f, 0.5f, 6.0f);
+                hasThreadCreated=true;
+            }
 
             // Handle one tap per frame.
             handleTap(frame, camera);
@@ -277,19 +276,12 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
 
 
             // Visualize anchors created by touch.
-            float scaleFactor = 1.0f;
-            for (ColoredAnchor coloredAnchor : anchors) {
-                if (coloredAnchor.anchor.getTrackingState() != TrackingState.TRACKING) {
-                    continue;
-                }
-                // Get the current pose of an Anchor in world space. The Anchor pose is updated
-                // during calls to session.update() as ARCore refines its estimate of the world.
-                coloredAnchor.anchor.getPose().toMatrix(anchorMatrix, 0);
-
-                // Update and draw the model and its shadow.
-                virtualObject.updateModelMatrix(anchorMatrix, scaleFactor);
-                virtualObject.draw(viewmtx, projmtx, colorCorrectionRgba, coloredAnchor.color);
+            if(anchors.get(0).getTrackingState()!=TrackingState.TRACKING){
+                return;
             }
+            anchors.get(0).getPose().toMatrix(anchorMatrix, 0);
+            virtualObject.updateModelMatrix(anchorMatrix, gestureHelper.getScaleFactor());
+            virtualObject.draw(viewmtx, projmtx, colorCorrectionRgba, DEFAULT_COLOR);
 
         } catch (Throwable t) {
             // Avoid crashing the application due to unhandled exceptions.
@@ -299,7 +291,7 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
 
     // Handle only one tap per frame, as taps are usually low frequency compared to frame rate.
     private void handleTap(Frame frame, Camera camera) {
-        MotionEvent tap = tapHelper.poll();
+        MotionEvent tap = gestureHelper.poll();
         if (tap != null && camera.getTrackingState() == TrackingState.TRACKING) {
             for (HitResult hit : frame.hitTest(tap)) {
                 // Check if any plane was hit, and if it was hit inside the plane polygon
@@ -314,27 +306,15 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
                     // Hits are sorted by depth. Consider only closest hit on a plane or oriented point.
                     // Cap the number of objects created. This avoids overloading both the
                     // rendering system and ARCore.
-                    if (anchors.size() >= 30) {
-                        anchors.get(0).anchor.detach();
+                    if (anchors.size() >= 1) {
+                        anchors.get(0).detach();
                         anchors.remove(0);
-                    }
-
-                    // Assign a color to the object for rendering based on the trackable type
-                    // this anchor attached to. For AR_TRACKABLE_POINT, it's blue color, and
-                    // for AR_TRACKABLE_PLANE, it's green color.
-                    float[] objColor;
-                    if (trackable instanceof Point) {
-                        objColor = new float[] {66.0f, 133.0f, 244.0f, 255.0f};
-                    } else if (trackable instanceof Plane) {
-                        objColor = new float[] {139.0f, 195.0f, 74.0f, 255.0f};
-                    } else {
-                        objColor = DEFAULT_COLOR;
                     }
 
                     // Adding an Anchor tells ARCore that it should track this position in
                     // space. This anchor is created on the Plane to place the 3D model
                     // in the correct position relative both to the world and to the plane.
-                    anchors.add(new ColoredAnchor(hit.createAnchor(), objColor));
+                    anchors.add(hit.createAnchor());
                     break;
                 }
             }
@@ -365,3 +345,4 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
                 + (cameraZ - planePose.tz()) * normal[2];
     }
 }
+

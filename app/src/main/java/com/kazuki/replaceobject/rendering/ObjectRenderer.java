@@ -21,6 +21,8 @@ import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
 
+import com.kazuki.replaceobject.helpers.GestureHelper;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -108,6 +110,10 @@ public class ObjectRenderer {
   private float diffuse = 1.0f;
   private float specular = 1.0f;
   private float specularPower = 6.0f;
+
+  // Rotation matrix
+  private final float[] rotationMatrix=new float[16];
+  private final float[] finalModelViewProjectionMatrix=new float[16];
 
   public ObjectRenderer() {}
 
@@ -304,6 +310,10 @@ public class ObjectRenderer {
     Matrix.multiplyMM(modelViewMatrix, 0, cameraView, 0, modelMatrix, 0);
     Matrix.multiplyMM(modelViewProjectionMatrix, 0, cameraPerspective, 0, modelViewMatrix, 0);
 
+    // Rotation
+    Matrix.setRotateM(rotationMatrix,0, GestureHelper.getAngle(),0.0f,1.0f,0.0f);
+    Matrix.multiplyMM(finalModelViewProjectionMatrix, 0, modelViewProjectionMatrix, 0, rotationMatrix, 0);
+
     GLES30.glUseProgram(program);
 
     // Set the lighting environment properties.
@@ -341,7 +351,7 @@ public class ObjectRenderer {
 
     // Set the ModelViewProjection matrix in the shader.
     GLES30.glUniformMatrix4fv(modelViewUniform, 1, false, modelViewMatrix, 0);
-    GLES30.glUniformMatrix4fv(modelViewProjectionUniform, 1, false, modelViewProjectionMatrix, 0);
+    GLES30.glUniformMatrix4fv(modelViewProjectionUniform, 1, false, finalModelViewProjectionMatrix, 0);
 
     // Enable vertex arrays
     GLES30.glEnableVertexAttribArray(positionAttribute);
