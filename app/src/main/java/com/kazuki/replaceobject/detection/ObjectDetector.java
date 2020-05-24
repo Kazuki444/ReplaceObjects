@@ -9,6 +9,8 @@ import android.graphics.RectF;
 import android.media.Image;
 import android.util.Log;
 
+import com.kazuki.replaceobject.inpainting.Inpainting;
+
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
@@ -80,8 +82,11 @@ public class ObjectDetector {
             }
         }
 
-        return drawresult(mappedRecognitions, rgbFrameBitmap);
-        //return rgbFrameBitmap;
+        // inpainting
+        Inpainting inpainting=new Inpainting();
+        inpainting.inpaint(rgbFrameBitmap,mappedRecognitions);
+
+        return rgbFrameBitmap;
     }
 
     protected void fillBytes(final Image.Plane[] planes, final byte[][] yuvBytes) {
@@ -95,26 +100,5 @@ public class ObjectDetector {
             }
             buffer.get(yuvBytes[i]);
         }
-    }
-
-    private Bitmap drawresult(List<Classifier.Recognition> mappedRecognitions, Bitmap outputBitmap) {
-        Paint boxPaint = new Paint();
-        boxPaint.setColor(Color.RED);
-        boxPaint.setStyle(Paint.Style.STROKE);
-        boxPaint.setStrokeWidth(5.0f);
-        boxPaint.setStrokeCap(Paint.Cap.ROUND);
-        boxPaint.setStrokeJoin(Paint.Join.ROUND);
-        boxPaint.setStrokeMiter(10);
-
-        Canvas canvas = new Canvas(outputBitmap);
-        for (Classifier.Recognition result : mappedRecognitions) {
-            if (result.getLocation() == null) {
-                continue;
-            }
-            RectF detectionRect = new RectF(result.getLocation());
-            canvas.drawRoundRect(detectionRect, 10, 10, boxPaint);
-        }
-
-        return outputBitmap;
     }
 }

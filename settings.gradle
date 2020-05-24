@@ -1,2 +1,2 @@
 rootProject.name='ReplaceObject'
-include ':app'
+include ':app', 'opencv430'

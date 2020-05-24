@@ -83,6 +83,9 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
     private static final int TF_OD_API_INPUT_SIZE = 320;
     private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.5f;
 
+    // use OpenCV
+    static {System.loadLibrary("opencv_java4");}
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
