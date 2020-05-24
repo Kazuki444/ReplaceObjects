@@ -1,9 +1,11 @@
 package com.kazuki.replaceobject.rendering;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
+import android.opengl.GLUtils;
 
 import com.google.ar.core.Coordinates2d;
 import com.google.ar.core.Frame;
@@ -123,24 +125,15 @@ public class CpuImageRenderer {
             Frame frame,
             int imageWidth,
             int imageHeight,
-            ByteBuffer processedImageBytes,
+            Bitmap rgbFrameBitmap,
             float screenAspectRatio,
             int cameraToDisplayRotation) {
 
         // Apply overlay image buffer
-        if (processedImageBytes != null) {
+        if (rgbFrameBitmap != null) {
             GLES30.glActiveTexture(GLES30.GL_TEXTURE1);
             GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, overlayTextureId);
-            GLES30.glTexImage2D(
-                    GLES30.GL_TEXTURE_2D,
-                    0,
-                    GLES30.GL_LUMINANCE,
-                    imageWidth,
-                    imageHeight,
-                    0,
-                    GLES30.GL_LUMINANCE,
-                    GLES30.GL_UNSIGNED_BYTE,
-                    processedImageBytes);
+            GLUtils.texImage2D(GLES30.GL_TEXTURE_2D,0,rgbFrameBitmap,0);
         }
 
         if (frame == null) {

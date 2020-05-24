@@ -1,5 +1,6 @@
 package com.kazuki.replaceobject.replaceobject;
 
+import android.graphics.Bitmap;
 import android.media.Image;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
@@ -30,6 +31,9 @@ import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
 import com.kazuki.replaceobject.R;
+import com.kazuki.replaceobject.detection.Classifier;
+import com.kazuki.replaceobject.detection.ObjectDetector;
+import com.kazuki.replaceobject.detection.TFLiteObjectDetectionAPIModel;
 import com.kazuki.replaceobject.helpers.CameraPermissionHelper;
 import com.kazuki.replaceobject.helpers.CpuImageDisplayRotationHelper;
 import com.kazuki.replaceobject.helpers.FullScreenHelper;
@@ -70,6 +74,14 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
     private static final float[] DEFAULT_COLOR = new float[]{0f, 0f, 0f, 0f};
     private final ArrayList<Anchor> anchors = new ArrayList<>();
 
+    // object detected use tensorflow lite
+    private Classifier detector;
+    ObjectDetector objectDetector=new ObjectDetector();
+    private static final boolean TF_OD_API_IS_QUANTIZED = true;
+    private static final String TF_OD_API_MODEL_FILE = "tflite/model.tflite";
+    private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/tflite/labelmap.txt";
+    private static final int TF_OD_API_INPUT_SIZE = 320;
+    private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.5f;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +104,18 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
         surfaceView.setWillNotDraw(false);
 
         installRequested = false;
+
+        // set up detector
+        try {
+            detector = TFLiteObjectDetectionAPIModel.create(
+                    getAssets(),
+                    TF_OD_API_MODEL_FILE,
+                    TF_OD_API_LABELS_FILE,
+                    TF_OD_API_INPUT_SIZE,
+                    TF_OD_API_IS_QUANTIZED);
+        } catch (final Exception e) {
+            return;
+        }
     }
 
     @Override
@@ -343,13 +367,21 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
                 throw new IllegalArgumentException("Expected image in YUV_420_888 format, got format" + image.getFormat());
             }
 
+            Bitmap rgbFrameBitmap = objectDetector.processImage(
+                    image,
+                    TF_OD_API_INPUT_SIZE,
+                    detector,
+                    MINIMUM_CONFIDENCE_TF_OD_API);
+
             cpuImageRenderer.drawWithCpuImage(
                     frame,
                     image.getWidth(),
                     image.getHeight(),
-                    image.getPlanes()[0].getBuffer(),
+                    rgbFrameBitmap,
                     cpuImageDisplayRotationHelper.getViewportAspectRatio(),
                     cpuImageDisplayRotationHelper.getCameraToDisplayRotation());
+
+
         } catch (NotYetAvailableException e) {
             cpuImageRenderer.drawWithoutCpuImage();
         }
