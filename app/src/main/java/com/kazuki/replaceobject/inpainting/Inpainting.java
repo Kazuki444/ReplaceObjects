@@ -31,6 +31,7 @@ public class Inpainting {
         Imgproc.cvtColor(mat,src,Imgproc.COLOR_RGBA2RGB);
         mat.release();
 
+        /**Inpaint the area of maximum recognition result**/
         // make mask
         Mat mask=new Mat(bitmap.getHeight(),bitmap.getWidth(),CV_8UC1, Scalar.all(0));
         for (Classifier.Recognition result:results){

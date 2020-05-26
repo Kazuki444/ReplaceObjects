@@ -74,7 +74,10 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
     private static final float[] DEFAULT_COLOR = new float[]{0f, 0f, 0f, 0f};
     private final ArrayList<Anchor> anchors = new ArrayList<>();
 
-    // object detected use tensorflow lite
+    // render object
+    ObjectList objectList=new ObjectList();
+
+    // object detected configuration
     private Classifier detector;
     ObjectDetector objectDetector=new ObjectDetector();
     private static final boolean TF_OD_API_IS_QUANTIZED = true;
@@ -224,9 +227,8 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
         // Prepare the rendering objects. This involves reading shaders, so may throw an IOException.
         try {
             cpuImageRenderer.createOnGlThread(this);
-            virtualObject.createOnGlThread(/*context=*/ this, "models/andy.obj", "models/andy.png");
+            virtualObject.createOnGlThread(/*context=*/ this, objectList.getObjFile(), objectList.getTexFile());
             virtualObject.setMaterialProperties(0.0f, 2.0f, 0.5f, 6.0f);
-
         } catch (IOException e) {
             Log.e(TAG, "Failed to read an asset file", e);
         }
@@ -240,6 +242,18 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
 
     @Override
     public void onDrawFrame(GL10 gl) {
+
+        // switch object
+        if(objectList.isReplace()){
+            try{
+                virtualObject.createOnGlThread(/*context=*/ this, objectList.getObjFile(), objectList.getTexFile());
+                virtualObject.setMaterialProperties(0.0f, 2.0f, 0.5f, 6.0f);
+            }
+            catch (IOException e){
+                Log.e(TAG, "Failed to read an asset file", e);
+            }
+        }
+
         // Clear screen to notify driver it should not load any pixels from previous frame.
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
@@ -370,11 +384,13 @@ public class ReplaceObjectActivity extends AppCompatActivity implements GLSurfac
                 throw new IllegalArgumentException("Expected image in YUV_420_888 format, got format" + image.getFormat());
             }
 
+            // detect and inpaint
             Bitmap rgbFrameBitmap = objectDetector.processImage(
                     image,
                     TF_OD_API_INPUT_SIZE,
                     detector,
-                    MINIMUM_CONFIDENCE_TF_OD_API);
+                    MINIMUM_CONFIDENCE_TF_OD_API,
+                    objectList);
 
             cpuImageRenderer.drawWithCpuImage(
                     frame,

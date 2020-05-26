@@ -10,6 +10,7 @@ import android.media.Image;
 import android.util.Log;
 
 import com.kazuki.replaceobject.inpainting.Inpainting;
+import com.kazuki.replaceobject.replaceobject.ObjectList;
 
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
@@ -23,14 +24,13 @@ public class ObjectDetector {
     private Bitmap rgbFrameBitmap = null;
     private Bitmap croppedBitmap = null;
 
-    private final int INAGE_ROTATION = 0;
+    private final int INAGE_ROTATION = 90; //only Portrait
     private Matrix frameToCropTransform;
     private Matrix cropToFrameTransform;
 
     private static final Logger LOGGER = new Logger();
 
-
-    public Bitmap processImage(Image image, int inputSize, Classifier detector, float confidence) {
+    public Bitmap processImage(Image image, int inputSize, Classifier detector, float confidence, ObjectList objectList) {
         int imageWidth = image.getWidth();
         int imageHeight = image.getHeight();
         int cropSize = inputSize;
@@ -79,6 +79,9 @@ public class ObjectDetector {
                 cropToFrameTransform.mapRect(location);
                 result.setLocation(location);
                 mappedRecognitions.add(result);
+
+                // detect replace object name
+                objectList.setObjName(result.getTitle());
             }
         }
 
