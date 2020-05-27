@@ -9,6 +9,26 @@ which is the same category as the recognized category. This system operates on o
 
 # DEMO
 
-デモで使ったモデル
+テレビ　→　椅子　→　テディベア　の順で置換している
+テディベアのモデルはAndroid Robotで置換した
 
-#Usage Instructions
+たまにAndroid Robotが出てくるのは  
+一般物体認識で誤認識があるとAndroid Robotに置換されるようにしている
+
+以下、デモで使ったもの  
+MobileNet v3の [.tflite](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md)  
+Google Polyから[Android Robot](https://poly.google.com/view/9-bJ2cXrk8S)  
+Google Polyから[chair](https://poly.google.com/view/7Jl72KgiRl-)  
+Google Polyから[tv](https://poly.google.com/view/5qZ5IaClHHw)
+
+#NOTE
+
+UI
+- タップ　 ・・・ 配置orタップした場所に移動
+- ドラック ・・・ 回転
+- ピンチ　 ・・・ 拡大縮小
+
+正常に動作する環境
+- 置換できる物体は１つ
+- スマホの向きはPortrait限定
+- MobileNetで認識できる物体は画面に１つしか映っていない
