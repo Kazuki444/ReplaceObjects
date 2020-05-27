@@ -9,6 +9,8 @@ which is the same category as the recognized category. This system operates on o
 
 # DEMO
 
+[Demo Movie] (https://drive.google.com/file/d/1B1JkDjy7j7KKUa0GYYhShCCVEpKmGGqF/view?usp=sharing)
+
 テレビ　→　椅子　→　テディベア　の順で置換している
 テディベアのモデルはAndroid Robotで置換した
 
